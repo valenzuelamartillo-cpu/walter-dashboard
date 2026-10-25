@@ -1,0 +1,74 @@
+<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Panel de Walter</title><style>
+body{font-family:system-ui,sans-serif;margin:0;background:#0f172a;color:#e2e8f0}header{padding:12px 16px;background:#1e293b;position:sticky;top:0;display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
+h1{font-size:1.2rem;margin:0}main{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:12px;padding:0 12px 12px}.mg{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:12px}.mb{display:flex;align-items:center;gap:10px;background:#1e293b;border-radius:14px;padding:18px 12px;font-size:1.05rem;color:#e2e8f0;min-height:76px}.mb b{font-size:1.8rem;color:#38bdf8;min-width:30px}.bk{display:inline-block;background:#0ea5e9;color:#fff;padding:10px 16px;border-radius:10px;font-size:1rem}.cg{display:grid;grid-template-columns:1fr 1fr;gap:8px}.cc{background:#334155;border-radius:8px;padding:8px}.big{font-size:1.5rem;font-weight:700}section{display:none}
+section{background:#1e293b;border-radius:10px;padding:12px;overflow:hidden}h2{font-size:1.05rem;margin:0 0 8px}a{color:#7dd3fc;text-decoration:none}
+li{margin:6px 0;line-height:1.3}ul{padding-left:18px;margin:4px 0}.s{font-size:.75rem;color:#94a3b8}.e{color:#fca5a5;font-size:.75rem}.tag{background:#ca8a04;color:#000;border-radius:4px;padding:0 4px;font-size:.7rem}
+.alta{color:#f87171}.media{color:#fbbf24}pre{white-space:pre-wrap;font-size:.75rem;max-height:260px;overflow:auto}button{background:#0ea5e9;border:0;color:#fff;padding:6px 12px;border-radius:6px}
+.hr{display:flex;gap:6px;overflow-x:auto;font-size:.75rem}.hr div{background:#334155;padding:4px;border-radius:4px;text-align:center;min-width:48px}</style></head><body>
+<header><h1>📊 Panel de Walter</h1><span class="s" id="upd">Cargando…</span><button onclick="load(1)">Actualizar</button></header>
+<nav id="menu"><div class="mg" id="mg"></div><p style="text-align:center"><a href="#msgs">📝 Mensajes</a></p></nav>
+<div id="back" style="display:none;padding:8px 12px"><a class="bk" href="#">⬅️ Menú</a> <b id="vt"></b></div><main><section id="msgs"><h2>📝 Mensajes</h2><form onsubmit="addMsg(event)" style="display:flex;gap:6px"><input id="mt" maxlength="500" placeholder="Escribe una nota…" style="flex:1;padding:6px;border-radius:6px;border:0"><button>Guardar</button></form><ul id="ml"></ul></section>
+<section id="safety"><h2>⚠️ Alertas (clima y última hora)</h2></section><section id="alerts"><h2>💰 Alertas económicas</h2></section>
+<section id="clima"><h2>☀️ Clima en Florida</h2></section><section id="flights"><h2>✈️ Vuelos FLL</h2></section><section id="traffic"><h2>🚗 Tráfico en el sur de Florida</h2></section><section id="airport"><h2>✈️ Aeropuerto FLL: estado y clima</h2></section><section id="maritime"><h2>🚢 Barcos y puerto (Port Everglades)</h2></section>
+<section id="events"><h2>🎉 Eventos en Fort Lauderdale</h2></section><section id="flevents"><h2>🌴 Eventos en Florida</h2></section><section id="noticias"><h2>🗞️ Noticias (Florida y principales)</h2></section><section id="national"><h2>🇺🇸 Noticias nacionales</h2></section><section id="world"><h2>📰 Noticias del mundo (Fox, CNN, ABC, Univision – economía primero)</h2></section><section id="intl"><h2>🌍 Noticias internacionales</h2></section>
+<section id="ecuador"><h2>🇪🇨 Ecuador / Guayaquil</h2></section></main>
+<script>
+const esc=s=>(s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const ago=ts=>ts?new Date(ts*1000).toLocaleString('es-US',{timeZone:'America/New_York',month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}):'';
+const li=i=>`<li><a href="${esc(i.link)}" target="_blank">${esc(i.title)}</a> ${i.econ?'<span class="tag">economía</span>':''}<div class="s">${esc(i.source)} ${ago(i.ts)} ${esc(i.date||'')} ${esc(i.place||'')}</div></li>`;
+const errs=e=>(e&&e.length)?`<div class="e">⚠️ ${e.map(esc).join('<br>')}</div>`:'';
+const links=l=>l?'<div>'+Object.entries(l).map(([k,v])=>`<a href="${v}" target="_blank">🔗 ${esc(k)}</a>`).join('<br>')+'</div>':'';
+function set(id,h){const s=document.getElementById(id);s.innerHTML=s.querySelector('h2').outerHTML+h}
+async function load(force){document.getElementById('upd').textContent='Actualizando…';
+try{const d=await (await fetch('/api/data'+(force?'?refresh=1':''))).json();
+const sf=d.safety||{nws:[],breaking:[]};set('safety','<h3>Clima (NWS Broward / Miami-Dade / Palm Beach)</h3>'+(sf.nws.length?'<ul>'+sf.nws.map(x=>`<li class="${x.severity=='Severe'||x.severity=='Extreme'?'alta':'media'}"><b>${esc(x.event)}</b> <span class="s">${esc(x.headline)}</span></li>`).join('')+'</ul>':'<p>✅ Sin alertas del clima activas.</p>')+'<h3>Última hora</h3><ul>'+sf.breaking.map(li).join('')+'</ul>'+errs(sf.errors));
+set('flevents','<ul>'+(d.fl_events.items||[]).slice(0,20).map(li).join('')+'</ul>'+links(d.fl_events.links)+errs(d.fl_events.errors));
+const nf=d.noticias||{florida:[],top:[]};set('noticias','<h3>Florida</h3><ul>'+nf.florida.map(li).join('')+'</ul><h3>Principales</h3><ul>'+nf.top.map(li).join('')+'</ul>'+errs(nf.errors));set('national','<ul>'+(d.national.items||[]).map(li).join('')+'</ul>'+errs(d.national.errors));
+const it=d.intl||{order:[],topics:{}};set('intl',it.order.map(n=>`<details ${n=='Casa Blanca'?'open':''}><summary><b>${esc(n)}</b> (${(it.topics[n]||[]).length})</summary><ul>${(it.topics[n]||[]).map(li).join('')}</ul></details>`).join('')+errs(it.errors));
+set('world','<ul>'+d.world.items.map(li).join('')+'</ul>'+errs(d.world.errors));
+set('alerts',(d.alerts.matches.length?d.alerts.matches.map(m=>`<b class="${m.level}">${esc(m.rule)} (${m.count})</b><ul>${m.items.map(li).join('')}</ul>`).join(''):'Sin alertas ahora.')+`<div class="s">Reglas: ${d.alerts.rules.map(esc).join(', ')}</div>`);
+const t=d.traffic||{},f=d.flights||{};let r='';
+r+=`<p>${t.total_sofla??0} incidentes activos en Broward, Miami-Dade, Palm Beach y alrededores.</p>`;
+(t.routes||[]).forEach(n=>{const L=(t.by_route||{})[n]||[];r+=`<b>${n}</b>: ${L.length?L.length+' incidente(s)':'✅ sin incidentes reportados'}<ul>${L.slice(0,5).map(x=>`<li>${x.closure?'⛔ ':''}${esc(x.type)} – ${esc(x.desc)} <span class="s">${esc(x.county)} · ${esc(x.updated)}</span></li>`).join('')}</ul>`});
+if((t.other||[]).length)r+=`<details><summary>Otras vías (${t.other.length})</summary><ul>${t.other.slice(0,15).map(x=>`<li>${esc(x.road)}: ${esc(x.desc)}</li>`).join('')}</ul></details>`;
+r+='<p class="s">FL511 reporta incidentes, obras y cierres; no velocidades. Para congestión en vivo usa el mapa:</p>'+links(t.links)+errs(t.errors);
+set('traffic',r);r='';const fa=d.airport.faa;r+=(fa?`<p><b>Demoras FAA:</b> ${fa.fll_afectado?'⚠️ Hay demoras que afectan FLL':'✅ Sin demoras ni paradas en tierra'}</p>`:'');
+const tb=(L,lbl,col)=>`<details ${lbl=='Llegadas'?'open':''}><summary>${lbl} (${L.length})</summary><table style="width:100%;font-size:.75rem">${L.map(x=>`<tr><td>${esc(x.flight)}</td><td>${esc(x.place)}</td><td>${esc(col=='d'?x.dep:x.arr)}</td></tr>`).join('')}</table></details>`;
+const lv=f.live||{};r+=lv.ok?`<p><b>Aviones llegando a FLL ahora:</b> ~${lv.landing} <span class="s">(bajando, &lt;3.000 m, a menos de 25 km)</span><br>Aviones en la zona: ${lv.total_area} (${lv.airborne} en el aire)<br><span class="s">Estimado con datos ADS-B en vivo de OpenSky Network. ${esc((lv.landing_list||[]).join(', '))}</span></p>`:`<p class="e">Conteo en vivo no disponible: ${esc(lv.error||'')}</p>`;r+=tb(f.arrivals||[],'Llegadas','a')+tb(f.departures||[],'Salidas','d')+tb(f.enroute||[],'En camino (llegada estimada)','a')+tb(f.scheduled||[],'Próximas salidas','d');
+r+=`<p class="s">Fuente: ${esc(f.source)}</p>`+errs(f.errors);set('flights',r);set('clima','<div class="cg">'+(d.cities.items||[]).map(c=>`<div class="cc">${esc(c.city)}<div class="big">${c.temp_f??'–'}°F</div><div class="s">${c.temp_c??'–'}°C · ${esc(c.desc||c.error||'')}${c.humidity!=null?' · 💧'+c.humidity+'%':''}</div></div>`).join('')+'</div><p class="s">Fuente: weather.gov</p>');
+const a=d.airport,w=a.weather;let h='';
+if(a.faa)h+=`<p><b>FAA:</b> ${a.faa.fll_afectado?'⚠️ Hay demoras/programas que afectan FLL<br>'+a.faa.detalle.map(esc).join('<br>'):'✅ Sin demoras ni paradas reportadas para FLL'}<br><span class="s">Act.: ${esc(a.faa.updated)}</span></p>`;
+if(a.alerts.length)h+='<p class="alta">'+a.alerts.map(x=>esc(x.event)).join('<br>')+'</p>';
+if(w)h+='<div class="hr">'+w.hourly.map(x=>`<div>${x.time}<br>${x.temp}°F<br>💧${x.rain??0}%</div>`).join('')+'</div><ul>'+w.periods.map(p=>`<li><b>${esc(p.name)}</b> ${p.temp}: <span class="s">${esc(p.text)}</span></li>`).join('')+'</ul>';
+set('airport',h+links(a.links)+errs(a.errors));
+const m=d.maritime,c=m.cruises||{today:[],upcoming:[]};set('maritime',`<p>🚢 ${esc(m.ais||'')}</p><h3>Cruceros hoy (programados)</h3>${c.today.length?'<ul>'+c.today.map(x=>`<li>${esc(x.ship)} – llega ${x.arr}, sale ${x.dep}</li>`).join('')+'</ul>':'<p>Ninguno programado hoy.</p>'}<details><summary>Próximos 7 días (${c.upcoming.length})</summary><ul>${c.upcoming.map(x=>`<li>${x.date}: ${esc(x.ship)} ${x.arr}–${x.dep}</li>`).join('')}</ul></details><p class="s">Fuente: ${esc(c.source||'')}</p>`+(m.alerts.length?'<p class="alta">'+m.alerts.map(x=>esc(x.headline)).join('<br>')+'</p>':'<p>✅ Sin alertas marinas activas</p>')+links(m.links)+'<h3>Noticias</h3><ul>'+m.news.map(li).join('')+'</ul><details><summary>Pronóstico marino (NOAA AMZ651, inglés)</summary><pre>'+esc(m.forecast)+'</pre></details>'+errs(m.errors));
+set('events','<ul>'+d.events.items.slice(0,20).map(li).join('')+'</ul>'+links(d.events.links)+errs(d.events.errors));
+set('ecuador','<ul>'+d.ecuador.items.map(li).join('')+'</ul>'+errs(d.ecuador.errors));
+document.getElementById('upd').textContent='Actualizado: '+new Date().toLocaleTimeString('es-US')}
+catch(e){document.getElementById('upd').textContent='Error: '+e}}
+async function msgs(r){const m=r||await (await fetch('/api/messages')).json();document.getElementById('ml').innerHTML=m.length?m.map(x=>`<li>${esc(x.text)} <span class="s">${esc(x.time)}</span> <a href="#" onclick="delMsg('${x.id}');return false">🗑️</a></li>`).join(''):'<li class="s">Sin mensajes.</li>'}
+async function addMsg(e){e.preventDefault();const i=document.getElementById('mt');if(!i.value.trim())return;msgs(await (await fetch('/api/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:i.value})})).json());i.value=''}
+async function delMsg(id){msgs(await (await fetch('/api/messages/'+id,{method:'DELETE'})).json())}
+// MENÚ: cambia el orden o los nombres aquí
+const MENU=[
+ {n:1,icon:'☀️',label:'Clima',sections:['clima','airport']},
+ {n:2,icon:'🚢',label:'Barcos y puerto',sections:['maritime']},
+ {n:3,icon:'✈️',label:'Vuelos y Aeropuerto FLL',sections:['flights','airport']},
+ {n:4,icon:'🚗',label:'Tráfico',sections:['traffic']},
+ {n:5,icon:'⚠️',label:'Alertas',sections:['safety']},
+ {n:6,icon:'💰',label:'Alertas económicas',sections:['alerts']},
+ {n:7,icon:'🎉',label:'Eventos',sections:['events','flevents']},
+ {n:8,icon:'📰',label:'Noticias',sections:['noticias','national','world','intl']},
+ {n:9,icon:'🇪🇨',label:'Ecuador / Guayaquil',sections:['ecuador']},
+];
+document.getElementById('mg').innerHTML=MENU.map(m=>`<a class="mb" href="#${m.n}"><b>${m.n}</b><span>${m.icon} ${m.label}</span></a>`).join('');
+function route(){const k=location.hash.slice(1);const m=MENU.find(x=>String(x.n)==k);const ids=m?m.sections:(k=='msgs'?['msgs']:null);
+ document.getElementById('menu').style.display=ids?'none':'';document.getElementById('back').style.display=ids?'':'none';
+ document.getElementById('vt').textContent=m?m.n+'. '+m.label:(ids?'Mensajes':'');
+ document.querySelectorAll('main section').forEach(s=>s.style.display=ids&&ids.includes(s.id)?'block':'none');
+ // ordenar según el menú
+ if(ids){const mn=document.querySelector('main');ids.forEach(id=>mn.appendChild(document.getElementById(id)))}window.scrollTo(0,0)}
+window.addEventListener('hashchange',route);route();
+msgs();load();setInterval(load,5*60*1000);
+</script></body></html>
